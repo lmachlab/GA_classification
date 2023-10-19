@@ -25,18 +25,24 @@ image_size = (image_height * image_width * bits_per_pixel) // 8
 print('starting loop')
 
 for i in range(len(subfolder_paths)):
+    print('working on ', subfolders[i])
     img_path = os.path.join(subfolder_paths[i], subfolders[i] + '.img')
+    print(img_path)
     if not os.path.exists(img_path):
         print('NO IMG FILE FOUND IN ' + subfolder_paths[i])
     else:
         output_folder = os.path.join(subfolder_paths[i], '500_slices')
-        os.makedirs(output_folder, exist_ok=True)
+        if not os.path.isdir(output_folder):
+            os.makedirs(output_folder, exist_ok=True)
+            print('made folder ' + output_folder)
+        else:
+            print('folder ' + output_folder + ' already exists')
         with open(img_path, 'rb') as f:
             data = f.read()
-
+        print('opened file ' + img_path)
         offset = 0
         for j in range(500):
-            if j % 20 == 0:
+            if j % 50 == 0:
                 print(f'processing slice {j+1} of {subfolders[i]}')
             image_data = data[offset : offset + image_size]
             image = Image.frombytes('L', (image_width, image_height), image_data)

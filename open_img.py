@@ -1,3 +1,5 @@
+## File for extracting the 500 slices from the .img files
+
 from PIL import Image
 import io
 import os 

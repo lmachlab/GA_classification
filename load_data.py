@@ -1,7 +1,7 @@
 import os
 import numpy as np
 import cv2
-
+import random
 import torch
 from torch.utils.data import Dataset
 
@@ -16,6 +16,11 @@ def parse_image(img_path, image_height, image_width):
         img = cv2.resize(img, (image_width, image_height))
     
     ## RANDOMLY APPLY AUGMENTATIONS HERE
+    flip_true = random.randint(0, 1)
+    if flip_true:
+        img = cv2.flip(img, 1)
+
+    
     return img
 
 

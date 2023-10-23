@@ -3,7 +3,7 @@ from transformers import AutoFeatureExtractor, AutoModelForImageClassification
 from datasets import load_dataset
 from torch.utils.data import DataLoader, Dataset
 from torchvision import transforms
-from load_data import DataGen
+from make_dataset import DataGen
 import matplotlib.pyplot as plt
 
 ## TODO: get list of image paths and labels

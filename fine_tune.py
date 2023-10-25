@@ -5,18 +5,38 @@ from torch.utils.data import DataLoader, Dataset
 from torchvision import transforms
 from make_dataset import DataGen
 import matplotlib.pyplot as plt
+import pandas as pd
+from sklearn.model_selection import train_test_split
+import os
 
 ## TODO: get list of image paths and labels
+img_labels = pd.read_csv('data/per_scan_data.csv')
 ## TODO: split into train and test sets
-from sklearn.model_selection import train_test_split
 
-# Assuming 'images_path' and 'img_labels' are your data
-X_trainval, X_test, y_trainval, y_test = train_test_split(images_path, img_labels, test_size=0.2, random_state=42)
+all_slices_path = '/Volumes/fsmresfiles/Ophthalmology/Mirza_Images/AMD/dAMD_GA/all_slices'
+all_slices = os.listdir(all_slices_path)
+
+def find_label(img_name, img_labels):
+
+   
+    name_column = 'scan_name'
+
+    found_row = img_labels[img_labels[name_column] == img_name]
+    return found_row['status'].item()
+
+labels = []
+for i in range(len(all_slices)):
+    img_name = all_slices[i]
+    label = find_label(img_name, img_labels)
+    labels.append(label)
+
+
+X_trainval, X_test, y_trainval, y_test = train_test_split(all_slices, labels, test_size=0.2, random_state=42)
 X_train, X_val, y_train, y_val = train_test_split(X_trainval, y_trainval, test_size=0.2, random_state=42)
 
-train_dataset = DataGen(X_train, y_train, image_height=1536, image_width=500)
-val_dataset = DataGen(X_val, y_val, image_height=1536, image_width=500)
-test_dataset = DataGen(X_test, y_test, image_height=1536, image_width=500)
+train_dataset = DataGen(X_train, y_train, all_slices_path, image_height=1536, image_width=500)
+val_dataset = DataGen(X_val, y_val, all_slices_path, image_height=1536, image_width=500)
+test_dataset = DataGen(X_test, y_test, all_slices_path, image_height=1536, image_width=500)
 
 train_dataloader = DataLoader(train_dataset, batch_size=32, shuffle=True)
 val_dataloader = DataLoader(val_dataset, batch_size=32)

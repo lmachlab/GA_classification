@@ -1,6 +1,5 @@
 import torch
 from transformers import AutoFeatureExtractor, AutoModelForImageClassification
-from datasets import load_dataset
 from torch.utils.data import DataLoader, Dataset
 from torchvision import transforms
 from make_dataset import DataGen
@@ -9,15 +8,18 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 import os
 
+print('check 1')
 ## TODO: get list of image paths and labels
-img_labels = pd.read_csv('data/per_scan_data.csv')
+img_labels = pd.read_csv('data\per_scan_data.csv')
 ## TODO: split into train and test sets
 
-all_slices_path = '/Volumes/fsmresfiles/Ophthalmology/Mirza_Images/AMD/dAMD_GA/all_slices'
+all_slices_path = r'\\fsmresfiles.fsm.northwestern.edu\fsmresfiles\Ophthalmology\Mirza_Images\AMD\dAMD_GA\all_slices_2'
 all_slices = os.listdir(all_slices_path)
+print('check 2')
+
+all_imgs = [item for item in all_slices if item.endswith('.jpg')]
 
 def find_label(img_name, img_labels):
-
    
     name_column = 'scan_name'
 
@@ -25,39 +27,39 @@ def find_label(img_name, img_labels):
     return found_row['status'].item()
 
 labels = []
-for i in range(len(all_slices)):
-    img_name = all_slices[i]
+for i in range(len(all_imgs)):
+    img_name = all_imgs[i]
+
     label = find_label(img_name, img_labels)
+
     labels.append(label)
 
-
-X_trainval, X_test, y_trainval, y_test = train_test_split(all_slices, labels, test_size=0.2, random_state=42)
+print('check 3')
+X_trainval, X_test, y_trainval, y_test = train_test_split(all_imgs, labels, test_size=0.2, random_state=42)
 X_train, X_val, y_train, y_val = train_test_split(X_trainval, y_trainval, test_size=0.2, random_state=42)
-
+print('check 4')
 train_dataset = DataGen(X_train, y_train, all_slices_path, image_height=1536, image_width=500)
 val_dataset = DataGen(X_val, y_val, all_slices_path, image_height=1536, image_width=500)
 test_dataset = DataGen(X_test, y_test, all_slices_path, image_height=1536, image_width=500)
-
+print('check 5')
 train_dataloader = DataLoader(train_dataset, batch_size=32, shuffle=True)
 val_dataloader = DataLoader(val_dataset, batch_size=32)
 test_dataloader = DataLoader(test_dataset, batch_size=32)
-
+print('check 6')
 # Step 3: Load Pre-trained Model and Feature Extractor
 feature_extractor = AutoFeatureExtractor.from_pretrained("microsoft/resnet-18")
 model = AutoModelForImageClassification.from_pretrained("microsoft/resnet-18")
+print('check 7')
 
-# Modify the final classification layer for your custom number of classes
-num_classes = 2
-model.classifier = torch.nn.Linear(model.classifier.in_features, num_classes)
 
 # Define loss function and optimizer
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model = model.to(device)
-
+print('check 8')
 criterion = torch.nn.CrossEntropyLoss()
 optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 num_epochs = 10
-
+print('check 9')
 
 train_losses = []
 val_losses = []
@@ -65,9 +67,10 @@ val_accuracies = []
 
 # Training loop
 for epoch in range(num_epochs):
+    print('starting epoch ', epoch)
     model.train()
     for images, labels in train_dataloader:
-        inputs = feature_extractor.pad(images, return_tensors="pt")
+        inputs = feature_extractor(images, return_tensors="pt")
         inputs = inputs.to(device)
 
         labels = labels.to(device)

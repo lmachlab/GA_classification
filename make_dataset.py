@@ -33,8 +33,9 @@ class DataGen(Dataset):
         self.img_folder = img_folder
 
     def __getitem__(self, index):
+        print(f'getting{self.image_names[index]}')
         
-        image = parse_image(self.image_names[index], self.image_height, self.image_width)
+        image = parse_image(self.image_names[index], self.img_folder, self.image_height, self.image_width)
         label = self.img_labels[index]
 
         return image, label

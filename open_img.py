@@ -4,7 +4,7 @@ from PIL import Image
 import io
 import os 
 
-GA_folder = '/Volumes/fsmresfiles/Ophthalmology/Mirza_Images/AMD/dAMD_GA'
+GA_folder = r"\\fsmresfiles.fsm.northwestern.edu\fsmresfiles\Ophthalmology\Mirza_Images\AMD\dAMD_GA"
 
 subfolder_names = os.listdir(GA_folder)
 subfolders = []
@@ -25,7 +25,7 @@ bits_per_pixel = 8
 image_size = (image_height * image_width * bits_per_pixel) // 8
 
 print('starting loop')
-
+output_folder = r'\\fsmresfiles.fsm.northwestern.edu\fsmresfiles\Ophthalmology\Mirza_Images\AMD\dAMD_GA\all_slices_3'
 for i in range(len(subfolder_paths)):
     print('working on ', subfolders[i])
     img_path = os.path.join(subfolder_paths[i], subfolders[i] + '.img')
@@ -33,12 +33,12 @@ for i in range(len(subfolder_paths)):
     if not os.path.exists(img_path):
         print('NO IMG FILE FOUND IN ' + subfolder_paths[i])
     else:
-        output_folder = os.path.join(subfolder_paths[i], '500_slices')
-        if not os.path.isdir(output_folder):
-            os.makedirs(output_folder, exist_ok=True)
-            print('made folder ' + output_folder)
-        else:
-            print('folder ' + output_folder + ' already exists')
+        
+        # if not os.path.isdir(output_folder):
+        #     os.makedirs(output_folder, exist_ok=True)
+        #     print('made folder ' + output_folder)
+        # else:
+        #     print('folder ' + output_folder + ' already exists')
         with open(img_path, 'rb') as f:
             data = f.read()
         print('opened file ' + img_path)

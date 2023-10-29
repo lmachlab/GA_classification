@@ -7,7 +7,10 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from sklearn.model_selection import train_test_split
 import os
+import torchvision
 import torch.nn as nn
+from torch.nn.modules.loss import BCEWithLogitsLoss
+from torch.optim import lr_scheduler
 
 print('check 1')
 ## TODO: get list of image paths and labels
@@ -51,55 +54,45 @@ val_dataloader = DataLoader(val_dataset, batch_size=32)
 test_dataloader = DataLoader(test_dataset, batch_size=32)
 print('check 6')
 # Step 3: Load Pre-trained Model and Feature Extractor
-feature_extractor = AutoFeatureExtractor.from_pretrained("microsoft/resnet-18")
-model = AutoModelForImageClassification.from_pretrained("microsoft/resnet-18")
-new_classifier = nn.Sequential(
-    nn.Flatten(start_dim=1, end_dim=-1),
-    nn.Linear(in_features=512, out_features=1, bias=True)
-)
-model.classifier = new_classifier
+model = torchvision.models.resnet18(pretrained=True)
+for params in model.parameters():
+    params.requires_grad_ = False
+# Add new final layer 
+nr_filters = model.fc.in_features
+model.fc = nn.Linear(nr_filters, 1)
 print('check 7')
 
 
 # Define loss function and optimizer
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-# device = 'cpu'
 model = model.to(device)
 print('check 8')
-criterion = torch.nn.BCELoss()
-optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+criterion = BCEWithLogitsLoss()
+optimizer = torch.optim.Adam(model.fc.parameters())
 num_epochs = 10
 print('check 9')
 
 train_losses = []
 val_losses = []
 val_accuracies = []
+
 # Training loop
 for epoch in range(num_epochs):
     print('starting epoch ', epoch)
     model.train()
-    train_loss = 0.0
     for images, labels in train_dataloader:
-        inputs = feature_extractor(images, return_tensors="pt")
-        inputs = inputs.to(device)
+        # inputs = feature_extractor(images, return_tensors="pt")
+        inputs = images.to(device)
 
         labels = labels.to(device)
 
         optimizer.zero_grad()
         outputs = model(**inputs).logits
-        ## turn into binary
-        outputs = torch.round(torch.sigmoid(outputs))
-        # print('outputs: ', outputs)
-        outputs = outputs.squeeze()
-        # print('labels: ', labels),
-        loss = criterion(outputs.float(), labels.float())
+        print('outputs: ', outputs.shape)
+        print('labels: ', labels)
+        loss = criterion(outputs, labels)
         loss.backward()
-        train_loss += loss.item()
         optimizer.step()
-    
-    print("first check: ", model.state_dict()['classifier.1.weight'][0][0:5])
-    print("second check: ", model.state_dict()['resnet.encoder.stages.3.layers.1.layer.1.normalization.bias'][0:4])
-    print("third check: ", model.state_dict()['resnet.encoder.stages.0.layers.1.layer.0.convolution.weight'][0][0][0])
 
     # Validation
     model.eval()
@@ -108,36 +101,33 @@ for epoch in range(num_epochs):
     total = 0
     with torch.no_grad():
         for images, labels in val_dataloader:
-            inputs = feature_extractor(images, return_tensors="pt")
-            inputs = inputs.to(device)
+            # inputs = feature_extractor.pad(images, return_tensors="pt")
+            inputs = images.to(device)
 
             labels = labels.to(device)
 
             outputs = model(**inputs).logits
-            outputs = torch.round(torch.sigmoid(outputs))
-            outputs = outputs.squeeze()
-            loss = criterion(outputs.float(), labels.float())
+
+            loss = criterion(outputs, labels)
 
             val_loss += loss.item()
 
-            # _, predicted = outputs.max(1)
-            # total += labels.size(0)
-            # correct += predicted.eq(labels).sum().item()
+            _, predicted = outputs.max(1)
+            total += labels.size(0)
+            correct += predicted.eq(labels).sum().item()
 
-    # val_accuracy = 100 * correct / total
+    val_accuracy = 100 * correct / total
     val_loss /= len(val_dataloader)
-    train_loss /= len(train_dataloader)
 
-    # print(f"Epoch [{epoch+1}/{num_epochs}], Loss: {loss.item():.4f}, Val Loss: {val_loss:.4f}, Val Acc: {val_accuracy:.2f}%")
-    print(f"Epoch [{epoch+1}/{num_epochs}], Loss: {train_loss:.4f}, Val Loss: {val_loss:.4f}")
+    print(f"Epoch [{epoch+1}/{num_epochs}], Loss: {loss.item():.4f}, Val Loss: {val_loss:.4f}, Val Acc: {val_accuracy:.2f}%")
 
     # Store metrics
-    train_losses.append(train_loss)
+    train_losses.append(loss.item())
     val_losses.append(val_loss)
-    # val_accuracies.append(val_accuracy)
+    val_accuracies.append(val_accuracy)
 
 # Save the fine-tuned model
-model.save_pretrained("fine_tuned_resnet18")
+model.save_pretrained("fine_tuned_resnet18_donna")
 
 # Plot the metrics
 plt.figure(figsize=(10, 4))
@@ -148,11 +138,11 @@ plt.xlabel('Epochs')
 plt.ylabel('Loss')
 plt.legend()
 
-# plt.subplot(1, 2, 2)
-# plt.plot(val_accuracies, label='Val Accuracy', color='green')
-# plt.xlabel('Epochs')
-# plt.ylabel('Accuracy')
-# plt.legend()
+plt.subplot(1, 2, 2)
+plt.plot(val_accuracies, label='Val Accuracy', color='green')
+plt.xlabel('Epochs')
+plt.ylabel('Accuracy')
+plt.legend()
 
 plt.tight_layout()
 plt.show()

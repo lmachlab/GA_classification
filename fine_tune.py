@@ -137,7 +137,7 @@ for epoch in range(num_epochs):
     # val_accuracies.append(val_accuracy)
 
 # Save the fine-tuned model
-model.save_pretrained("fine_tuned_resnet18")
+model.save_pretrained("fine_tuned_0resnet18")
 
 # Plot the metrics
 plt.figure(figsize=(10, 4))

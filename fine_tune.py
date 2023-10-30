@@ -53,11 +53,11 @@ print('check 6')
 # Step 3: Load Pre-trained Model and Feature Extractor
 feature_extractor = AutoFeatureExtractor.from_pretrained("microsoft/resnet-18")
 model = AutoModelForImageClassification.from_pretrained("microsoft/resnet-18")
-new_classifier = nn.Sequential(
-    nn.Flatten(start_dim=1, end_dim=-1),
-    nn.Linear(in_features=512, out_features=1, bias=True)
+model.classifier = nn.Sequential(
+    nn.Linear(in_features=2048, out_features=1024),
+    nn.ReLU(),
+    nn.Linear(in_features=1024, out_features=1)
 )
-model.classifier = new_classifier
 print('check 7')
 
 

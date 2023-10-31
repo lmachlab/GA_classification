@@ -53,11 +53,11 @@ print('check 6')
 # Step 3: Load Pre-trained Model and Feature Extractor
 feature_extractor = AutoFeatureExtractor.from_pretrained("microsoft/resnet-18")
 model = AutoModelForImageClassification.from_pretrained("microsoft/resnet-18")
-model.classifier = nn.Sequential(
-    nn.Linear(in_features=2048, out_features=1024),
-    nn.ReLU(),
-    nn.Linear(in_features=1024, out_features=1)
+new_classifier = nn.Sequential(
+    nn.Flatten(start_dim=1, end_dim=-1),
+    nn.Linear(in_features=512, out_features=1, bias=True)
 )
+model.classifier = new_classifier
 print('check 7')
 
 
@@ -146,7 +146,7 @@ for epoch in range(num_epochs):
     # val_accuracies.append(val_accuracy)
 
 # Save the fine-tuned model
-model.save_pretrained("fine_tuned_0resnet18")
+model.save_pretrained("fine_tuned_resnet18_3")
 
 # Plot the metrics
 plt.figure(figsize=(10, 4))
@@ -165,4 +165,30 @@ plt.legend()
 
 plt.tight_layout()
 plt.show()
+plt.savefig("val_train_loss_curves.png")
 
+
+## give it testing data
+test_loss = 0.0
+test_loss_list = []
+with torch.no_grad():
+    model.eval()
+    for images, labels in test_dataloader:
+        inputs = feature_extractor(images, return_tensors="pt")
+        inputs = inputs.to(device)
+        
+        labels = labels.to(device)
+
+        outputs = model(**inputs).logits
+        outputs = torch.round(torch.sigmoid(outputs))
+        outputs = outputs.squeeze()
+        loss = criterion(outputs.float(), labels.float())
+
+        test_loss += loss.item()
+        test_loss_list.append(loss.item())
+ 
+test_loss /= len(test_dataloader)
+print("test_loss: ", test_loss, " test Loss list: ", test_loss_list)
+
+
+breakpoint()

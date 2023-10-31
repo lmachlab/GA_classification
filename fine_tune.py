@@ -65,9 +65,18 @@ print('check 7')
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 # device = 'cpu'
 model = model.to(device)
+
+for name, parameter in model.named_parameters():
+    if 'classifier' in name:
+        print(f"parameter '{name}' will not be freezed")
+        parameter.requires_grad = True
+    else:
+        parameter.requires_grad = False
+
+
 print('check 8')
 criterion = torch.nn.BCELoss()
-optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
 num_epochs = 10
 print('check 9')
 

@@ -80,17 +80,21 @@ val_accuracies = []
 for epoch in range(num_epochs):
     print('starting epoch ', epoch)
     model.train()
+    train_loss = 0.0
     for images, labels in train_dataloader:
         # inputs = feature_extractor(images, return_tensors="pt")
         inputs = images.to(device)
+        inputs = inputs.permute(0, 3, 2, 1).to(device)
+        inputs = inputs.type('torch.cuda.FloatTensor')
 
         labels = labels.to(device)
 
         optimizer.zero_grad()
-        outputs = model(**inputs).logits
-        print('outputs: ', outputs.shape)
-        print('labels: ', labels)
-        loss = criterion(outputs, labels)
+        outputs = torch.round(torch.sigmoid(model(inputs)))
+        outputs = outputs.squeeze()
+
+        loss = criterion(outputs, labels.float())
+        train_loss += loss.item()
         loss.backward()
         optimizer.step()
 
@@ -103,31 +107,34 @@ for epoch in range(num_epochs):
         for images, labels in val_dataloader:
             # inputs = feature_extractor.pad(images, return_tensors="pt")
             inputs = images.to(device)
+            inputs = inputs.permute(0, 3, 2, 1).to(device)
+            inputs = inputs.type('torch.cuda.FloatTensor')
 
             labels = labels.to(device)
 
-            outputs = model(**inputs).logits
+            outputs = torch.round(torch.sigmoid(model(inputs)))
 
-            loss = criterion(outputs, labels)
+            outputs = outputs.squeeze()
+
+            loss = criterion(outputs, labels.float())
 
             val_loss += loss.item()
 
-            _, predicted = outputs.max(1)
-            total += labels.size(0)
-            correct += predicted.eq(labels).sum().item()
 
-    val_accuracy = 100 * correct / total
+    # val_accuracy = 100 * correct / total
     val_loss /= len(val_dataloader)
+    train_loss /= len(train_dataloader)
 
-    print(f"Epoch [{epoch+1}/{num_epochs}], Loss: {loss.item():.4f}, Val Loss: {val_loss:.4f}, Val Acc: {val_accuracy:.2f}%")
+    # print(f"Epoch [{epoch+1}/{num_epochs}], Loss: {loss.item():.4f}, Val Loss: {val_loss:.4f}, Val Acc: {val_accuracy:.2f}%")
+    print(f"Epoch [{epoch+1}/{num_epochs}], Loss: {train_loss:.4f}, Val Loss: {val_loss:.4f}")
 
     # Store metrics
-    train_losses.append(loss.item())
+    train_losses.append(train_loss)
     val_losses.append(val_loss)
-    val_accuracies.append(val_accuracy)
+    # val_accuracies.append(val_accuracy)
 
 # Save the fine-tuned model
-model.save_pretrained("fine_tuned_resnet18_donna")
+model.save_pretrained("torchvision_resnet18")
 
 # Plot the metrics
 plt.figure(figsize=(10, 4))
@@ -138,12 +145,40 @@ plt.xlabel('Epochs')
 plt.ylabel('Loss')
 plt.legend()
 
-plt.subplot(1, 2, 2)
-plt.plot(val_accuracies, label='Val Accuracy', color='green')
-plt.xlabel('Epochs')
-plt.ylabel('Accuracy')
-plt.legend()
+# plt.subplot(1, 2, 2)
+# plt.plot(val_accuracies, label='Val Accuracy', color='green')
+# plt.xlabel('Epochs')
+# plt.ylabel('Accuracy')
+# plt.legend()
 
 plt.tight_layout()
-plt.show()
+# plt.show()
+plt.savefig("val_train_loss_curves.png")
 
+
+## give it testing data
+test_loss = 0.0
+test_loss_list = []
+with torch.no_grad():
+    model.eval()
+    for images, labels in test_dataloader:
+        inputs = images.to(device)
+        inputs = inputs.permute(0, 3, 2, 1).to(device)
+        inputs = inputs.type('torch.cuda.FloatTensor')
+
+        labels = labels.to(device)
+
+        outputs = torch.round(torch.sigmoid(model(inputs)))
+
+        outputs = outputs.squeeze()
+        
+        loss = criterion(outputs, labels.float())
+
+        test_loss += loss.item()
+
+ 
+test_loss /= len(test_dataloader)
+print("test_loss: ", test_loss, " test Loss list: ", test_loss_list)
+
+
+breakpoint()

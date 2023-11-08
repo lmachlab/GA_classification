@@ -22,9 +22,9 @@ import pandas as pd
 from make_dataset import DataGen
 
 print('check 1')
-img_labels = pd.read_csv('data/per_scan_data.csv')
+img_labels = pd.read_csv('data\per_scan_data.csv')
 
-all_slices_path = r'/Volumes/fsmresfiles/Ophthalmology/Mirza_Images/AMD/dAMD_GA/all_slices_3'
+all_slices_path = r'\\fsmresfiles.fsm.northwestern.edu\fsmresfiles\Ophthalmology\Mirza_Images\AMD\dAMD_GA\all_slices_3'
 all_slices = os.listdir(all_slices_path)
 print('check 2')
 
@@ -72,6 +72,12 @@ model = models.resnet18(weights=ResNet18_Weights.DEFAULT)
 num_features = model.fc.in_features
 model.fc = nn.Linear(num_features, 1)  # Assuming binary classification
 model = model.to(device) # Send model to device (GPU if available, else CPU)
+for name, parameter in model.named_parameters():
+    if 'fc' in name:
+        print(f"parameter '{name}' will not be freezed")
+        parameter.requires_grad = True
+    else:
+        parameter.requires_grad = False
 # Loss function and optimizer
 criterion = BCEWithLogitsLoss()
 optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
@@ -107,7 +113,7 @@ for epoch in range(n_epochs):
     model.eval()
     running_val_loss = 0.0
     with torch.no_grad():
-        for i, (inputs, masks, labels) in enumerate(val_dataloader):
+        for i, (inputs, labels) in enumerate(val_dataloader):
             inputs, labels = inputs.float().to(device), labels.to(device)
             inputs = inputs.permute(0, 3, 1, 2).to(device)
             outputs = model(inputs).squeeze()
@@ -127,7 +133,7 @@ plt.ylabel('Loss')
 plt.legend()
 plt.savefig('loss_plot.png')
 # Save the model
-model_save_path = "./cnn_model.pth"
+model_save_path = "./finetuned_torchvision_model.pth"
 torch.save(model.state_dict(), model_save_path)
 print(f"Model saved to {model_save_path}")
 # test

@@ -140,33 +140,30 @@ print(f"Model saved to {model_save_path}")
 
 model.eval()  # Set the model to evaluation mode
 true_labels = []
-pred_labels = []
-outputs_list = []
+preds = []
+
 # Loop through the test data
 for inputs,labels in test_dataloader:
     inputs, labels = inputs.float().to(device), labels.to(device)
     inputs = inputs.permute(0, 3, 1, 2).to(device)
     # Forward pass
     outputs = model(inputs).squeeze()
-    _, preds = torch.max(outputs, 1)  # Get the predicted classes
     true_labels.extend(labels.cpu().numpy())
-    pred_labels.extend(preds.cpu().numpy())
-    outputs_list.extend(outputs.detach().cpu().numpy())
+    preds.extend(outputs.cpu().numpy())
 # Convert to numpy arrays for use with sklearn
 true_labels = np.array(true_labels)
-pred_labels = np.array(pred_labels)
+preds = np.array(preds)
+pred_binary = np.where(preds >= 0.5, 1, 0)
 # Compute ROC AUC
-roc_auc = roc_auc_score(label_binarize(true_labels, classes=[0,1]),
-                        label_binarize(pred_labels, classes=[0,1]),
-                        average='macro')
+roc_auc = roc_auc_score(true_labels, preds)
 # Compute accuracy
-accuracy = accuracy_score(true_labels, pred_labels)
+accuracy = accuracy_score(true_labels, pred_binary)
 # Compute confusion matrix
-cm = confusion_matrix(true_labels, pred_labels)
+cm = confusion_matrix(true_labels, pred_binary)
 # Plot confusion matrix
 sns.heatmap(cm, annot=True, cmap='Blues', fmt='g')
 plt.xlabel('Predicted')
 plt.ylabel('True')
-plt.show()
+plt.savefig('confusion_matrix.png')
 print(f"Accuracy: {accuracy}")
 print(f"ROC AUC: {roc_auc}")

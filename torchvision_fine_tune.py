@@ -20,6 +20,7 @@ from sklearn.preprocessing import label_binarize
 import numpy as np
 import pandas as pd
 from make_dataset import DataGen
+import csv 
 
 print('check 1')
 img_labels = pd.read_csv('data\per_scan_data.csv')
@@ -51,6 +52,20 @@ for i in range(len(all_imgs)):
 print('check 3')
 X_trainval, X_test, y_trainval, y_test = train_test_split(all_imgs, labels, test_size=0.2, random_state=42)
 X_train, X_val, y_train, y_val = train_test_split(X_trainval, y_trainval, test_size=0.2, random_state=42)
+
+## store values
+with open('trainset_values.csv', 'w', newline='') as file:
+    writer = csv.writer(file)
+    writer.writerow(X_train)
+
+with open('testset_values.csv', 'w', newline='') as file:
+    writer = csv.writer(file)
+    writer.writerow(X_test)
+
+with open('valset_values.csv', 'w', newline='') as file:
+    writer = csv.writer(file)
+    writer.writerow(X_val)
+
 print('check 4')
 train_dataset = DataGen(X_train, y_train, all_slices_path, image_height=1536, image_width=500)
 val_dataset = DataGen(X_val, y_val, all_slices_path, image_height=1536, image_width=500)
@@ -70,7 +85,10 @@ print(f"Training on device {device}.")
 model = models.resnet18(weights=ResNet18_Weights.DEFAULT)
 # model.conv1 = nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=3, bias=False)
 num_features = model.fc.in_features
-model.fc = nn.Linear(num_features, 1)  # Assuming binary classification
+model.fc = nn.Sequential(
+    nn.Linear(num_features, 1),  # Assuming binary classification
+    nn.Sigmoid()
+)
 model = model.to(device) # Send model to device (GPU if available, else CPU)
 for name, parameter in model.named_parameters():
     if 'fc' in name:
@@ -85,7 +103,7 @@ optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
 # Initialize lists to save the losses
 train_losses = []
 val_losses = []
-n_epochs = 10
+n_epochs = 8
 for epoch in range(n_epochs):
     model.train()
     running_loss = 0.0
@@ -131,9 +149,9 @@ plt.title('Training and Validation Loss')
 plt.xlabel('Epochs')
 plt.ylabel('Loss')
 plt.legend()
-plt.savefig('loss_plot.png')
+plt.savefig('loss_plot_8epoch.png')
 # Save the model
-model_save_path = "./finetuned_torchvision_model.pth"
+model_save_path = "./finetuned_torchvision_model_8epoch.pth"
 torch.save(model.state_dict(), model_save_path)
 print(f"Model saved to {model_save_path}")
 # test
@@ -143,13 +161,16 @@ true_labels = []
 preds = []
 
 # Loop through the test data
-for inputs,labels in test_dataloader:
-    inputs, labels = inputs.float().to(device), labels.to(device)
-    inputs = inputs.permute(0, 3, 1, 2).to(device)
-    # Forward pass
-    outputs = model(inputs).squeeze()
-    true_labels.extend(labels.cpu().numpy())
-    preds.extend(outputs.cpu().numpy())
+with torch.no_grad():
+    for i, (inputs,labels) in enumerate(test_dataloader):
+        inputs, labels = inputs.float().to(device), labels.to(device)
+        inputs = inputs.permute(0, 3, 1, 2).to(device)
+        # Forward pass
+        outputs = model(inputs).squeeze()
+        true_labels.extend(labels.cpu().numpy())
+        preds.extend(outputs.cpu().detach().numpy())
+
+    
 # Convert to numpy arrays for use with sklearn
 true_labels = np.array(true_labels)
 preds = np.array(preds)
@@ -164,6 +185,6 @@ cm = confusion_matrix(true_labels, pred_binary)
 sns.heatmap(cm, annot=True, cmap='Blues', fmt='g')
 plt.xlabel('Predicted')
 plt.ylabel('True')
-plt.savefig('confusion_matrix.png')
+plt.savefig('confusion_matrix_8epoch.png')
 print(f"Accuracy: {accuracy}")
 print(f"ROC AUC: {roc_auc}")

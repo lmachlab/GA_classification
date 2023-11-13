@@ -21,6 +21,10 @@ import numpy as np
 import pandas as pd
 from make_dataset import DataGen
 
+
+
+torch.cuda.empty_cache()
+
 print('check 1')
 img_labels = pd.read_csv('data\per_scan_data.csv')
 
@@ -70,7 +74,10 @@ print(f"Training on device {device}.")
 model = models.resnet18(weights=ResNet18_Weights.DEFAULT)
 # model.conv1 = nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=3, bias=False)
 num_features = model.fc.in_features
-model.fc = nn.Linear(num_features, 1)  # Assuming binary classification
+model.fc = nn.Sequential(
+    nn.Linear(num_features, 1),  # Assuming binary classification
+    nn.Sigmoid()
+)  # Assuming binary classification
 model = model.to(device) # Send model to device (GPU if available, else CPU)
 
 model.eval()  # Set the model to evaluation mode
@@ -78,14 +85,17 @@ true_labels = []
 preds = []
 print('number of loops needed: ', len(test_dataloader))
 # Loop through the test data
-for i, (inputs,labels) in enumerate(test_dataloader):
-    print('loop number: ', i)
-    inputs, labels = inputs.float().to(device), labels.to(device)
-    inputs = inputs.permute(0, 3, 1, 2).to(device)
-    # Forward pass
-    outputs = model(inputs).squeeze()
-    true_labels.extend(labels.cpu().numpy())
-    preds.extend(outputs.cpu().detach().numpy())
+with torch.no_grad():
+    for i, (inputs,labels) in enumerate(test_dataloader):
+        print('loop number: ', i)
+        inputs, labels = inputs.float().to(device), labels.to(device)
+        inputs = inputs.permute(0, 3, 1, 2).to(device)
+        # Forward pass
+        outputs = model(inputs).squeeze()
+        true_labels.extend(labels.cpu().numpy())
+        preds.extend(outputs.cpu().detach().numpy())
+
+    
 # Convert to numpy arrays for use with sklearn
 true_labels = np.array(true_labels)
 preds = np.array(preds)

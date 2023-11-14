@@ -9,6 +9,7 @@ from sklearn.model_selection import train_test_split
 import os
 import torch.nn as nn
 
+
 print('check 1')
 ## TODO: get list of image paths and labels
 img_labels = pd.read_csv('data\per_scan_data.csv')

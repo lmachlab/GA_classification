@@ -85,10 +85,11 @@ print(f"Training on device {device}.")
 model = models.resnet18(weights=ResNet18_Weights.DEFAULT)
 # model.conv1 = nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=3, bias=False)
 num_features = model.fc.in_features
-model.fc = nn.Sequential(
-    nn.Linear(num_features, 1),  # Assuming binary classification
-    nn.Sigmoid()
-)
+model.fc = nn.Linear(num_features, 1)
+# model.fc = nn.Sequential(
+#     nn.Linear(num_features, 1),  # Assuming binary classification
+#     nn.Sigmoid()
+# )
 model = model.to(device) # Send model to device (GPU if available, else CPU)
 for name, parameter in model.named_parameters():
     if 'fc' in name:
@@ -103,7 +104,7 @@ optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
 # Initialize lists to save the losses
 train_losses = []
 val_losses = []
-n_epochs = 8
+n_epochs = 7
 for epoch in range(n_epochs):
     model.train()
     running_loss = 0.0
@@ -149,13 +150,13 @@ plt.title('Training and Validation Loss')
 plt.xlabel('Epochs')
 plt.ylabel('Loss')
 plt.legend()
-plt.savefig('loss_plot_8epoch.png')
+plt.savefig('loss_plot_7epoch.png')
 # Save the model
-model_save_path = "./finetuned_torchvision_model_8epoch.pth"
+model_save_path = "./finetuned_torchvision_model_7epoch.pth"
 torch.save(model.state_dict(), model_save_path)
 print(f"Model saved to {model_save_path}")
 # test
-
+plt.clf()
 model.eval()  # Set the model to evaluation mode
 true_labels = []
 preds = []
@@ -185,6 +186,6 @@ cm = confusion_matrix(true_labels, pred_binary)
 sns.heatmap(cm, annot=True, cmap='Blues', fmt='g')
 plt.xlabel('Predicted')
 plt.ylabel('True')
-plt.savefig('confusion_matrix_8epoch.png')
+plt.savefig('confusion_matrix_7epoch.png')
 print(f"Accuracy: {accuracy}")
 print(f"ROC AUC: {roc_auc}")

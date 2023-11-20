@@ -54,15 +54,15 @@ X_trainval, X_test, y_trainval, y_test = train_test_split(all_imgs, labels, test
 X_train, X_val, y_train, y_val = train_test_split(X_trainval, y_trainval, test_size=0.2, random_state=42)
 
 ## store values
-with open('trainset_values.csv', 'w', newline='') as file:
+with open('trainset_values_50epoch.csv', 'w', newline='') as file:
     writer = csv.writer(file)
     writer.writerow(X_train)
 
-with open('testset_values.csv', 'w', newline='') as file:
+with open('testset_values_50epoch.csv', 'w', newline='') as file:
     writer = csv.writer(file)
     writer.writerow(X_test)
 
-with open('valset_values.csv', 'w', newline='') as file:
+with open('valset_values_50epoch.csv', 'w', newline='') as file:
     writer = csv.writer(file)
     writer.writerow(X_val)
 
@@ -104,10 +104,22 @@ optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
 # Initialize lists to save the losses
 train_losses = []
 val_losses = []
-n_epochs = 7
+n_epochs = 50
+model_name = None
+best_model_name = None
+best_model_loss = 500000
+
+## track values for each epoch
+TP_epoch_tracker = []
+TN_epoch_tracker = []
+FP_epoch_tracker = []
+FN_epoch_tracker = []
+
+
 for epoch in range(n_epochs):
     model.train()
     running_loss = 0.0
+    model_name = "finetune_model_epoch"+str(epoch)
     for i, (inputs, labels) in enumerate(train_dataloader):
         # Move data and labels to device
         inputs, labels = inputs.float().to(device), labels.to(device)
@@ -131,6 +143,12 @@ for epoch in range(n_epochs):
     # Validate
     model.eval()
     running_val_loss = 0.0
+
+    TP_count = 0
+    TN_count = 0
+    FP_count = 0
+    FN_count = 0
+
     with torch.no_grad():
         for i, (inputs, labels) in enumerate(val_dataloader):
             inputs, labels = inputs.float().to(device), labels.to(device)
@@ -139,9 +157,27 @@ for epoch in range(n_epochs):
             labels = labels.float()
             val_loss = criterion(outputs, labels)
             running_val_loss += val_loss.item()
+            
+            tn, fp, fn, tp = confusion_matrix(labels, outputs, labels=[0,1]).ravel()
+            TP_count += tp
+            TN_count += tn
+            FP_count += fp
+            FN_count += fn
+
+    # save count for epoch 
+    TP_epoch_tracker.append(TP_count)
+    TN_epoch_tracker.append(TN_count)
+    FP_epoch_tracker.append(FP_count)
+    FN_epoch_tracker.append(FN_count)
+
     # Save the validation loss for this epoch
     val_losses.append(running_val_loss / len(val_dataloader))
+    ##save the best model
+    if running_loss < best_model_loss:
+        best_model_name = model_name
+        best_model_loss = running_loss
     print(f"Epoch {epoch + 1}/{n_epochs}, Val Loss: {running_val_loss / len(val_dataloader)}")
+    print("******* TP: ", TP_count, " TN: ", TN_count, " FP: ", FP_count, " FN: ", FN_count, " *******")
 # Plotting
 plt.figure(figsize=(10, 5))
 plt.plot(train_losses, label='Training loss')
@@ -150,9 +186,9 @@ plt.title('Training and Validation Loss')
 plt.xlabel('Epochs')
 plt.ylabel('Loss')
 plt.legend()
-plt.savefig('loss_plot_7epoch.png')
+plt.savefig('loss_plot_50epoch.png')
 # Save the model
-model_save_path = "./finetuned_torchvision_model_7epoch.pth"
+model_save_path = "./" + model_name + ".pth"
 torch.save(model.state_dict(), model_save_path)
 print(f"Model saved to {model_save_path}")
 # test
@@ -186,6 +222,6 @@ cm = confusion_matrix(true_labels, pred_binary)
 sns.heatmap(cm, annot=True, cmap='Blues', fmt='g')
 plt.xlabel('Predicted')
 plt.ylabel('True')
-plt.savefig('confusion_matrix_7epoch.png')
+plt.savefig('confusion_matrix_50epoch.png')
 print(f"Accuracy: {accuracy}")
 print(f"ROC AUC: {roc_auc}")
